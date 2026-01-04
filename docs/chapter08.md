@@ -1,5 +1,11 @@
 # 第八章 电动飞行器
 
+![eVTOL飞行器](../assets/images/chapter08/evtol_aircraft.jpg)
+*eVTOL电动垂直起降飞行器*
+
+![垂直起降技术](../assets/images/chapter08/vertical_takeoff.jpg)
+*垂直起降技术*
+
 ## 8.1 电动垂直起降飞行器（eVTOL）
 
 ### 什么是eVTOL？
@@ -17,12 +23,18 @@
 
 - **亿航**（中国）：EH216载人自动驾驶飞行器
 - **小鹏汇天**（中国）：飞行汽车
+
+![飞行汽车](../assets/images/chapter08/flying_car.jpg)
+*飞行汽车*
 - **Joby Aviation**（美国）
 - **Lilium**（德国）
 
 ---
 
 ## 8.2 电动固定翼飞行器
+
+![电动飞机](../assets/images/chapter08/electric_aircraft.jpg)
+*电动固定翼飞行器*
 
 固定翼飞行器具有更好的续航和速度：
 
@@ -105,6 +117,9 @@
 - **总输出气流：16-21倍**
 
 #### 应用于飞行器：流体推进系统（Fluidic Propulsion System, FPS）
+
+![FPS流体推进系统](../assets/images/chapter08/fluidic_propulsion.jpg)
+*FPS流体推进系统*
 
 **核心创新**：
 - 用**无叶片环形推进器**替代传统旋翼
@@ -279,6 +294,9 @@ FPS环形气流：
 - 噪音：<55分贝
 - 应用：城市空中出租车
 
+![空中出租车](../assets/images/chapter08/air_taxi.jpg)
+*空中出租车*
+
 **3. 货运无人机（FPS版）**
 - 载重：50-200kg
 - 续航：30-60km
@@ -402,6 +420,9 @@ FPS成为eVTOL主流技术之一
 ### 监管与安全
 
 - 低空空域管理改革
+
+![低空飞行](../assets/images/chapter08/low_altitude_flight.jpg)
+*低空飞行*
 - 飞行器适航认证
 - 飞行员培训（或自动驾驶）
 - 地面基础设施建设
@@ -586,6 +607,9 @@ FPS成为eVTOL主流技术之一
 **总投资需求**：千亿元级别（2025-2035年）
 
 ---
+
+![未来立体交通](../assets/images/chapter08/future_transportation.jpg)
+*未来立体交通网络*
 
 ## 8.14 本章小结（重大更新）
 
