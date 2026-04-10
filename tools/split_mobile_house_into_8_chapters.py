@@ -50,7 +50,110 @@ def normalize_links(text: str) -> str:
 
 
 def section(heading: str, text: str) -> str:
-    return f"## {heading}\n\n{normalize_links(text).strip()}\n"
+    normalized = normalize_links(text).strip()
+    lines = normalized.splitlines()
+    if lines and lines[0].strip() == heading.strip():
+        normalized = "\n".join(lines[1:]).lstrip()
+    return f"## {heading}\n\n{normalized}\n"
+
+
+def promote_exact_headings(
+    text: str,
+    replacements: list[tuple[str, str]],
+) -> str:
+    """
+    Replace exact standalone lines with markdown headings.
+    Each replacement is (original_line, heading_prefix).
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        replaced = False
+        for original, prefix in replacements:
+            if stripped == original or stripped.startswith(original):
+                out.append(f"{prefix} {original}")
+                replaced = True
+                break
+        if not replaced:
+            out.append(line)
+    return "\n".join(out)
+
+
+def format_image_captions(text: str) -> str:
+    """
+    Convert short standalone lines after images into explicit blockquote captions.
+    This keeps figure labels/sources visually distinct from正文小标题.
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+    prev_nonempty = ""
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            out.append(line)
+            continue
+
+        should_caption = False
+        if prev_nonempty.startswith("!["):
+            if not stripped.startswith(("#", ">", "-", "*", "|", "![")) and not stripped.startswith(
+                ("1. ", "2. ", "3. ", "4. ", "5. ")
+            ):
+                source_like = (
+                    stripped.startswith("图片源自")
+                    or stripped.startswith("视频")
+                    or stripped.startswith("官网")
+                    or stripped.startswith("示例来自")
+                    or stripped.startswith("国家标准")
+                )
+                generic_like = (
+                    len(stripped) <= 16
+                    and not any(p in stripped for p in "。！？；：")
+                )
+                if source_like or generic_like:
+                    should_caption = True
+
+        if should_caption:
+            clean = stripped.strip("*").strip()
+            out.append(f"> 图注：{clean}")
+        else:
+            out.append(line)
+
+        prev_nonempty = stripped
+
+    return "\n".join(out)
+
+
+def dedupe_adjacent_headings(text: str) -> str:
+    """
+    Collapse repeated markdown headings when the same heading appears twice
+    with only blank lines in between.
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#") and out:
+            j = len(out) - 1
+            while j >= 0 and not out[j].strip():
+                j -= 1
+            if j >= 0 and out[j].strip() == stripped:
+                continue
+        out.append(line)
+
+    return "\n".join(out)
+
+
+def polish_generated_content(text: str) -> str:
+    """Apply a few stable cleanup rules for stubborn pseudo-headings."""
+    text = text.replace(
+        "\n电动房车公寓\n\n![IMG_256]",
+        "\n### 电动房车公寓\n\n![IMG_256]",
+    )
+    text = text.replace("### 水\n\n### 水", "### 水")
+    return text
 
 
 def write(path: Path, content: str) -> None:
@@ -75,21 +178,92 @@ def build_chapters(lines: list[str]) -> list[Chapter]:
         filename="02-移动住房的概念与基本形态.md",
         title="第2章 移动住房的概念与基本形态",
         summary="围绕四代住房演变、移动化/模块化/接口化与基础设计展开，是全书的概念核心。",
-        body=normalize_links(take(lines, 181, 429)),
+        body="\n\n".join(
+            [
+                section("住房的种类和功能", take(lines, 181, 216)),
+                promote_exact_headings(
+                    section("移动房什么样？", take(lines, 219, 343)),
+                    [
+                        ("1、移动化", "###"),
+                        ("2、模块化", "###"),
+                        ("3、接口化", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("移动房概要设计", take(lines, 345, 429)),
+                    [],
+                ),
+            ]
+        ),
     )
 
     chapter3 = Chapter(
         filename="03-制度与人口流动约束.md",
         title="第3章 制度与人口流动约束",
         summary="讨论户口、教育、高考与人口流动对居住方式选择的影响。",
-        body=normalize_links(take(lines, 430, 532)),
+        body="\n\n".join(
+            [
+                section("户口和户籍", take(lines, 433, 455)),
+                promote_exact_headings(
+                    section("户口相关的资质", take(lines, 457, 473)),
+                    [
+                        ("1. 车牌摇号", "###"),
+                        ("2. 房子", "###"),
+                        ("3. 教育", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("高考", take(lines, 475, 531)),
+                    [
+                        ("高考路线", "###"),
+                        ("非高考路线", "###"),
+                    ],
+                ),
+            ]
+        ),
     )
 
     chapter4 = Chapter(
         filename="04-核心产品方案：电动房车公寓.md",
         title="第4章 核心产品方案：电动房车公寓",
         summary="集中呈现电动房车公寓的用户定位、内部设计、补给、驾驶、停放与通勤方案。",
-        body=normalize_links(take(lines, 533, 722)),
+        body="\n\n".join(
+            [
+                promote_exact_headings(
+                    section("方案概述", take(lines, 533, 559)),
+                    [
+                        ("电动房车公寓", "###"),
+                        ("用户群体", "###"),
+                        ("居住成本费用明细表", "###"),
+                        ("居住在房车，已经不是新鲜话题。看似方便，实则痛点不少，比如：", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("车内布局设计", take(lines, 561, 638)),
+                    [
+                        ("三室分离卫生间", "###"),
+                        ("开放式厨房", "###"),
+                        ("卧室", "###"),
+                        ("燃油房车", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("水、电、燃气等怎么补充", take(lines, 640, 686)),
+                    [
+                        ("补给方式有两种：", "###"),
+                        ("水", "###"),
+                        ("电", "###"),
+                        ("燃气", "###"),
+                        ("冬季取暖", "###"),
+                        ("上网", "###"),
+                        ("安全", "###"),
+                    ],
+                ),
+                section("怎么驾驶", take(lines, 688, 695)),
+                section("怎么停放", take(lines, 697, 716)),
+                section("如何减少上班通勤的时间？", take(lines, 718, 722)),
+            ]
+        ),
     )
 
     chapter5 = Chapter(
@@ -98,8 +272,22 @@ def build_chapters(lines: list[str]) -> list[Chapter]:
         summary="把居住之外的移动空间场景归为一组，包括酒店民宿影响、移动会议室与 mini 电动巴士公寓等案例。",
         body="\n\n".join(
             [
-                section("酒店、民宿与移动居住服务", take(lines, 723, 757)),
-                section("移动会议室", take(lines, 760, 825)),
+                promote_exact_headings(
+                    section("酒店、民宿与移动居住服务", take(lines, 723, 757)),
+                    [
+                        ("对酒店、民宿的影响", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("移动会议室", take(lines, 760, 825)),
+                    [
+                        ("移动会议室概要设计", "###"),
+                        ("模型图", "###"),
+                        ("移动鲜花店", "###"),
+                        ("移动咖啡馆", "###"),
+                        ("移动工作室", "###"),
+                    ],
+                ),
                 section("mini 电动巴士公寓", take(lines, 910, 924)),
             ]
         ),
@@ -111,9 +299,46 @@ def build_chapters(lines: list[str]) -> list[Chapter]:
         summary="把自动驾驶、人工智能与电池/氢能重新组合为支撑移动住房普及的技术底座。",
         body="\n\n".join(
             [
-                section("自动驾驶", take(lines, 828, 909) + "\n\n" + take(lines, 926, 983)),
-                section("人工智能", take(lines, 986, 1300)),
-                section("电池与氢能", take(lines, 1304, 1452)),
+                promote_exact_headings(
+                    section("自动驾驶", take(lines, 828, 909) + "\n\n" + take(lines, 926, 983)),
+                    [
+                        ("自动驾驶分类等级", "###"),
+                        ("自动驾驶带来的便利", "###"),
+                        ("自动驾驶技术路线和进展", "###"),
+                        ("1、政策法规", "####"),
+                        ("2、量产成本", "####"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("人工智能", take(lines, 987, 1300)),
+                    [
+                        ("0和1的二元世界", "###"),
+                        ("二进制", "####"),
+                        ("声音、图片、视频，如何表示", "####"),
+                        ("机器学习", "###"),
+                        ("感知机", "####"),
+                        ("神经网络", "####"),
+                        ("卷积神经网络", "####"),
+                        ("AI寄语", "###"),
+                    ],
+                ),
+                promote_exact_headings(
+                    section("电池与氢能", take(lines, 1304, 1452)),
+                    [
+                        ("锂电池家族", "###"),
+                        ("氢燃料电池", "###"),
+                        ("其他电池", "###"),
+                        ("铅酸电池", "####"),
+                        ("一次性干电池（又叫锌锰电池）", "####"),
+                        ("固态电池", "####"),
+                        ("钠离子电池", "####"),
+                        ("镁电池", "####"),
+                        ("铝离子电池", "####"),
+                        ("钾离子电池", "####"),
+                        ("生物燃料电池", "####"),
+                        ("太阳能电池", "####"),
+                    ],
+                ),
             ]
         ),
     )
@@ -124,7 +349,16 @@ def build_chapters(lines: list[str]) -> list[Chapter]:
         summary="保留飞行器谱系与“如何改变住行”的核心论述，用来解释未来居住半径为何会被重新定义。",
         body="\n\n".join(
             [
-                section("电动飞行器谱系", take(lines, 1456, 1578)),
+                promote_exact_headings(
+                    section("电动飞行器谱系", take(lines, 1456, 1578)),
+                    [
+                        ("电动垂直起降飞行器", "###"),
+                        ("电动固定翼飞行器", "###"),
+                        ("仿生扑翼飞行器", "###"),
+                        ("地效飞行器", "###"),
+                        ("东山再起的飞艇", "###"),
+                    ],
+                ),
                 section("电动飞行器如何改变住行", take(lines, 1580, 1630)),
             ]
         ),
@@ -184,6 +418,9 @@ def main() -> int:
             f"> {chapter.summary}\n\n"
             f"{chapter.body.strip()}\n"
         )
+        content = format_image_captions(content)
+        content = dedupe_adjacent_headings(content)
+        content = polish_generated_content(content)
         write(OUT_DIR / chapter.filename, content)
 
     write(OUT_DIR / "README.md", build_index(chapters))
